@@ -136,14 +136,11 @@ class ScaleImageTask(EOTask):
         eopatch[FeatureType.DATA]["SCALED_BANDS"] = scaled_image
 
         return eopatch
-
-
+    
 scale_image_task = ScaleImageTask()
-
 download_node_with_scale = EONode(download_task)
 scale_node = EONode(scale_image_task, inputs=[download_node_with_scale])
 save_node_with_scale = EONode(save_task, inputs=[scale_node])
-
 workflow_with_scale = EOWorkflow([download_node_with_scale, scale_node, save_node_with_scale])
 
 # Run the workflow over selected patches only instead of the complete AOI
@@ -166,15 +163,13 @@ TILE_IDS = [
     57,
 ]
 
-
 for idx in TILE_IDS:
     result = workflow.execute(
         {
             download_node: {"bbox": bbox_list[idx], "time_interval": ["2021-07-01", "2021-09-30"]},
             save_node: {"eopatch_folder": f"eopatch_{idx}"},
         }
-    )
-    
+    )  
 eopatch = EOPatch.load("./EOpatches/eopatch_33")
 scaled_image = eopatch[FeatureType.DATA]["BANDS"]
 
@@ -191,16 +186,14 @@ for i in range(5):
     axs[i].set_xticks([])
     axs[i].set_yticks([])
     axs[i].set_aspect("auto")
-
 plt.tight_layout()
 plt.show()
 
     
-def convlstm(num_classes=3, in_channels=4):
+def convlstm(num_classes=3, in_channels=4) -> ConvLSTM:
     return ConvLSTM(
         512, 512, input_dim=in_channels, hidden_dim=24, nclasses=num_classes, kernel_size=(3, 3), bias=False
-    )
-    
+    )  
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
 else:
@@ -238,25 +231,6 @@ inference_node = EONode(inference_task, inputs=[load_node])
 save_inference_node = EONode(save_inference_task, inputs=[inference_node])
 
 inference_workflow = EOWorkflow([load_node, inference_node, save_inference_node])
-
-TILE_IDS = [
-    33,
-    42,
-    51,
-    60,
-    32,
-    41,
-    50,
-    59,
-    31,
-    40,
-    49,
-    58,
-    30,
-    39,
-    48,
-    57,
-]
 
 for tile_id in TILE_IDS:
     inference_workflow.execute(
