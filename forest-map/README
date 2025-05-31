@@ -1,0 +1,12 @@
+Forest Map
+
+This folder contains a pre-trained PyTorch model for forest type segmentation on multi-temporal Sentinel-2 satellite imagery.
+
+The content of this folder is as follows:
+
+* vi_forest_model_weights.pth - pre-trained weights of the forest model
+* DE044L1_KAISERSLAUTERN_UA2018_v012.gpkg - the AOI over Kaiserslautern from the European Urban Atlas 
+    
+The model is released under CC-BY-NC-SA-4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.txt) license.
+
+Related code available at https://github.com/sentinel-hub/eo-learn-examples/forest-map.

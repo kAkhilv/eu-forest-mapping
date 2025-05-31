@@ -7,6 +7,8 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 from shapely.geometry import Point, Polygon
+from ConvLSTM import ConvLSTM
+import torch
 from sentinelhub import (
     CRS,
     SHConfig,
@@ -193,80 +195,6 @@ for i in range(5):
 plt.tight_layout()
 plt.show()
 
-
-import torch
-import torch.nn as nn
-class ConvLSTMCell(nn.Module):
-    def __init__(self, input_size, input_dim, hidden_dim, kernel_size, bias):
-        super(ConvLSTMCell, self).__init__()
-
-        self.height, self.width = input_size
-        self.i_dim = input_dim
-        self.h_dim = hidden_dim
-
-        self.kernel_size = kernel_size
-        self.padding = kernel_size[0] // 2, kernel_size[1] // 2
-        self.bias = bias
-
-        self.conv = nn.Conv2d(
-            in_channels=self.i_dim + self.h_dim,
-            out_channels=4 * self.h_dim,
-            kernel_size=self.kernel_size,
-            padding=self.padding,
-            bias=self.bias,
-        )
-
-    def forward(self, input_tensor, cur_state):
-        h_cur, c_cur = cur_state
-
-        combined = torch.cat([input_tensor, h_cur], dim=1)
-
-        combined_conv = self.conv(combined)
-        cc_i, cc_f, cc_o, cc_g = torch.split(combined_conv, self.h_dim, dim=1)
-        i = torch.sigmoid(cc_i)
-        f = torch.sigmoid(cc_f)
-        o = torch.sigmoid(cc_o)
-        g = torch.tanh(cc_g)
-
-        c_next = f * c_cur + i * g
-        h_next = o * torch.tanh(c_next)
-        return h_next, c_next
-
-
-class ConvLSTM(torch.nn.Module):
-    def __init__(self, height, width, input_dim=13, hidden_dim=16, nclasses=4, kernel_size=(3, 3), bias=False):
-        super(ConvLSTM, self).__init__()
-
-        self.inconv = torch.nn.Conv3d(input_dim, hidden_dim, (1, 3, 3))
-
-        self.cell = ConvLSTMCell(
-            input_size=(height, width), input_dim=hidden_dim, hidden_dim=hidden_dim, kernel_size=kernel_size, bias=bias
-        )
-
-        self.final = torch.nn.Conv2d(hidden_dim, nclasses, (3, 3))
-
-    def forward(self, x, hidden=None, state=None):
-        x = x.permute(0, 4, 1, 2, 3)
-        x = torch.nn.functional.pad(x, (1, 1, 1, 1), "constant", 0)
-        x = self.inconv.forward(x)
-
-        b, c, t, h, w = x.shape
-        if hidden is None:
-            hidden = torch.zeros((b, c, h, w))
-        if state is None:
-            state = torch.zeros((b, c, h, w))
-
-        if torch.cuda.is_available():
-            hidden = hidden.cuda()
-            state = state.cuda()
-
-        for iter in range(t):
-            hidden, state = self.cell.forward(x[:, :, iter, :, :], (hidden, state))
-
-        x = torch.nn.functional.pad(state, (1, 1, 1, 1), "constant", 0)
-        x = self.final.forward(x)
-
-        return x
     
 def convlstm(num_classes=3, in_channels=4):
     return ConvLSTM(
@@ -297,5 +225,103 @@ class InferenceTask(EOTask):
         output = output.squeeze(0).unsqueeze(-1).cpu().numpy()
 
         eopatch = self.add_output(eopatch, output)
-
+        
         return eopatch
+    
+model_file = "./forest-map/vi_forest_model_weights.pth"
+inference_task = InferenceTask(model_file)
+
+save_inference_task = SaveTask("./Predictions", overwrite_permission=OverwritePermission.OVERWRITE_FEATURES)
+
+load_node = EONode(LoadTask("./EOpatches"))
+inference_node = EONode(inference_task, inputs=[load_node])
+save_inference_node = EONode(save_inference_task, inputs=[inference_node])
+
+inference_workflow = EOWorkflow([load_node, inference_node, save_inference_node])
+
+TILE_IDS = [
+    33,
+    42,
+    51,
+    60,
+    32,
+    41,
+    50,
+    59,
+    31,
+    40,
+    49,
+    58,
+    30,
+    39,
+    48,
+    57,
+]
+
+for tile_id in TILE_IDS:
+    inference_workflow.execute(
+        {
+            load_node: {"eopatch_folder": f"eopatch_{tile_id}"},
+            save_inference_node: {"eopatch_folder": f"eopatch_{tile_id}"},
+        }
+    )
+    
+fig, axs = plt.subplots(nrows=4, ncols=4, figsize=(15, 15))
+
+for i, tile_id in enumerate(TILE_IDS):
+    eopatch = EOPatch.load(f"./EOpatches/eopatch_{tile_id}")
+    scaled_image = eopatch[FeatureType.DATA]["BANDS"]
+    img = np.clip(scaled_image[:, :, :, :3], a_min=0, a_max=1500)
+    img = img / 1500 * 255
+    img = np.concatenate((img, scaled_image[:, :, :, 3][..., None]), axis=-1)
+    img = img.astype(np.uint8)
+
+    ax = axs[i // 4][i % 4]
+    ax.imshow(img[0][..., [2, 1, 0]])
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_aspect("auto")
+
+fig.subplots_adjust(wspace=0, hspace=0)
+
+COLOR_ENCODING = {
+    0: [255, 255, 255],
+    1: [70, 158, 74],
+    2: [28, 92, 36],
+    3: [255, 255, 255],
+}
+
+
+def labelVisualize(img, num_class=3):
+    img = img[:, :, 0] if len(img.shape) == 3 else img
+    img_out = np.zeros(img.shape + (3,))
+    for i in range(num_class):
+        img_out[img == i, :] = COLOR_ENCODING[i]
+    return img_out.astype(np.uint8)
+
+fig, axs = plt.subplots(nrows=4, ncols=4, figsize=(15, 15))
+for i, tile_id in enumerate(TILE_IDS):
+    inferenced_eopatch = EOPatch.load(f"./Predictions/eopatch_{tile_id}")
+    output = inferenced_eopatch[FeatureType.MASK_TIMELESS]["mask"].squeeze(-1)
+    output[output == 2] = 1
+    output = labelVisualize(output)
+    ax = axs[i // 4][i % 4]
+    ax.imshow(output)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_aspect("auto")
+
+fig.subplots_adjust(wspace=0, hspace=0)
+
+fig, axs = plt.subplots(nrows=4, ncols=4, figsize=(15, 15))
+for i, tile_id in enumerate(TILE_IDS):
+    inferenced_eopatch = EOPatch.load(f"./Predictions/eopatch_{tile_id}")
+    output = inferenced_eopatch[FeatureType.MASK_TIMELESS]["mask"].squeeze(-1)
+    output = labelVisualize(output)
+    ax = axs[i // 4][i % 4]
+    ax.imshow(output)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_aspect("auto")
+
+fig.subplots_adjust(wspace=0, hspace=0)
