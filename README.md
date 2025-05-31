@@ -8,7 +8,25 @@ A [Sentinelhub](https://www.sentinel-hub.com/) account to use the API and corres
 
 ## Run the code locally
 Clone the repo <br>
-```git clone https://github.com/kAkhilv/eu-forest-mapping.git cd eu-forest-mapping```
+```
+git clone https://github.com/kAkhilv/eu-forest-mapping.git
+ ```
+Create a virtual environment
+```
+cd eu-forest-mapping
+python -m venv eoenv
+source eoenv/bin/activate
+```
+Install the requirements
+```
+pip install -r requirements.txt
+```
+Replace the CRS coordinates of the Area of Interest(aoi) in ```coordinates.geojson ``` file.
+The aoi can be splpit into number of smaller bounding boxes using the ```sentinelhub.areas.BBoxSplitter``` class.
+
+## The ConvLSTM model
+
+
 
 
 
