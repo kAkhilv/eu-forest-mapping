@@ -34,7 +34,7 @@ ConvLSTM is a deep learning model known for its effectiveness in capturing spati
 
 ### Output
 The pretrained model is used for running inference on the downloaded data. The inference generates individual results for each patch. 
-The result show the coniferous trees class in light green and broadleaf trees class in dark green.
+The result show the coniferous trees class in light green and broadleaf trees class in dark green.<br>
 <img src="https://raw.githubusercontent.com/kAkhilv/eu-forest-mapping/main/output-png.png" alt="Raw Image from a patch" width="400"/>
 
 ### References
