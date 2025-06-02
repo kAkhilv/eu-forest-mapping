@@ -27,6 +27,7 @@ The AoI can be split into number of smaller bounding boxes using the ```sentinel
 ## Workflow
 ### Acquiring the raw data
 Sentinel-2 imagery for the defined Area of Interest (AoI) is acquired by dividing the region into smaller bounding box patches. This patch-wise approach streamlines data retrieval and ensures efficient coverage. To optimize reuse and minimize redundant downloads, it is recommended to store the fetched images locally. A sample patch of the raw image is as shown below:
+
 <img src="https://raw.githubusercontent.com/kAkhilv/eu-forest-mapping/main/raw_image.png" alt="Raw Image from a patch" width="400"/>
 
 ### The ConvLSTM model
@@ -35,6 +36,7 @@ ConvLSTM is a deep learning model known for its effectiveness in capturing spati
 ### Output
 The pretrained model is used for running inference on the downloaded data. The inference generates individual results for each patch. 
 The result show the coniferous trees class in light green and broadleaf trees class in dark green:
+
 <img src="https://raw.githubusercontent.com/kAkhilv/eu-forest-mapping/main/output-png.png" alt="Output of the patch" width="400"/>
 
 ### References
