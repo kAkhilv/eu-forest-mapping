@@ -34,8 +34,8 @@ from eolearn.io import SentinelHubInputTask
 # Set the configuration for Sentinel Hub
 
 config = SHConfig()
-config.sh_client_id = 'baebdf3d-21a9-4e08-8cd2-c7419df585cb'
-config.sh_client_secret = 'CgMycZHiVotSQ8ACwNxqEvdUQ9Uizyrd'# Replace with your own credentials
+config.sh_client_id = ''
+config.sh_client_secret = ''# Replace with your own credentials
 if not config.sh_client_id or not config.sh_client_secret:
     print("Warning! To use Process API, please provide the credentials (OAuth client ID and client secret).")
     
